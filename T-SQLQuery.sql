@@ -191,6 +191,135 @@ zona = '004' AND
 familia = '101' AND
 rubro = '0010'
 
+/*7. Hacer un procedimiento que dadas dos fechas complete la tabla Ventas. Debe
+insertar una línea por cada artículo con los movimientos de stock realizados entre
+esas fechas. La tabla se encuentra creada y vacía.*/
+create table VENTAS(
+	codigo  char(8),
+	detalle char(50),
+	cant_mov int,
+	precio_de_venta  decimal(18,2),
+	renglon int,
+	ganancia decimal(18,2)
+	)
+create procedure ej7(@fecha1 smalldatetime, @fecha2 smalldatetime)
+as 
+begin 
+	declare @codigo char(8),@producto char(50),@movimiento int,@precio decimal(18,2), @ganancia decimal(18,2), @renglon int
+	declare C_VENTAS cursor for 
+		select prod_codigo, prod_detalle, count(item_producto),AVG(item_precio), 
+		sum(item_cantidad* item_precio) - sum(item_cantidad* item_precio) from producto 
+		JOIN Item_Factura ON prod_codigo = item_producto
+		JOIN Factura ON item_numero + item_sucursal + item_tipo =
+		fact_numero + fact_sucursal + fact_tipo
+		WHERE fact_fecha BETWEEN @FECHA1 AND @FECHA2
+		GROUP BY prod_codigo, prod_detalle
+
+		open C_VENTAS
+			fetch next from C_VENTAS into @codigo,@producto,@movimiento,@precio, @ganancia 
+			SET @renglon = 0
+			while @@FETCH_STATUS = 0
+				begin
+					insert into ventas VALUES (@codigo,@producto,@movimiento,@precio,@renglon,@ganancia)
+					set @renglon = @renglon +1
+					fetch next from C_VENTAS into @codigo,@producto,@movimiento,@precio, @ganancia 
+				end
+			close c_ventas 
+			deallocate c_ventas
+end 
+
+exec ej7 '2012-01-01', '2012-06-01' 
+
+--COMPRUEBO 
+SELECT * FROM VENTAS where codigo = '00001415'
+
+/* EJ.8 Realizar un procedimiento que complete la tabla Diferencias de precios, para los
+productos facturados que tengan composición y en los cuales el precio de
+facturación sea diferente al precio del cálculo de los precios unitarios por cantidad
+de sus componentes, se aclara que un producto que compone a otro, también puede
+estar compuesto por otros y así sucesivamente, la tabla se debe crear y está formada
+por las siguientes columnas: 
+*/
+CREATE TABLE DIFERENCIAS ( 
+	dif_codigo char(8),
+	dif_detalle char(50),
+	dif_cantidad NUMERIC(6,0),
+	dif_precio_generado DECIMAL(12,2),
+	dif_precio_facturado DECIMAL(12,2),
+)
+GO
+
+CREATE FUNCTION FX_PRODUCTO_COMPUESTO_PRECIO(@PRODUCTO CHAR(8))
+	RETURNS DECIMAL(12,2)
+AS
+BEGIN
+	DECLARE @PRECIO DECIMAL(12,2)
+	
+	SET @PRECIO =
+	(SELECT sum(comp_cantidad* prod_precio) from composicion 
+	join producto on comp_componente = prod_codigo
+	 where comp_producto = @producto group by comp_producto)
+
+	IF @PRECIO IS NULL
+		SET @PRECIO = 
+		(SELECT prod_precio 
+		FROM Producto 
+		WHERE prod_codigo = @PRODUCTO)
+	
+	RETURN @PRECIO
+END
+GO
+
+
+CREATE PROCEDURE ej_8
+AS
+BEGIN
+	INSERT INTO DIFERENCIAS
+	SELECT 
+	prod_codigo,
+	prod_detalle,
+	count(distinct comp_componente),
+	dbo.FX_PRODUCTO_COMPUESTO_PRECIO(prod_codigo),
+	prod_precio
+	from producto join composicion on prod_codigo = comp_producto 
+	group by prod_codigo, prod_detalle, prod_precio
+
+END
+GO
+
+--PRUEBA
+
+-- Elijo un producto compuesto como por ejemplo el 00001707 y veo que tiene
+-- un precio facturado de 27.20
+
+SELECT *
+FROM Producto
+WHERE prod_codigo = '00001707'
+
+-- El producto 00001707 esta compuesto por dos 2 productos, 1 unidad del 00001491 y 
+-- 2 unidades del 00014003 
+
+SELECT * 
+FROM Composicion
+JOIN Producto ON comp_componente = prod_codigo
+WHERE comp_producto = '00001707'
+
+-- Como los dos productos que componen al 00001707 no son compuestos solo hay que
+-- sumar sus costos para obtener el costo del producto 00001707, haciendo la cuenta
+-- me da que el costo de 00001707 es de 27.62 ya que el costo del producto 00001491 es
+-- de 15.92 (15.92 * 1) y el costo del producto 00014003 es de 11.7 (5.85 * 2).
+-- Ejecuto el SP para completar la tabla de DIFERENCIAS
+
+EXEC ej_8
+
+-- Por lo tanto en la tabla DIFERENCIAS en la columna de productos que lo componen 
+-- deberia figurar un 2 para el producto 00001707, un precio generado de 27.62 y un
+-- precio facturado de 27.20
+
+SELECT *
+FROM DIFERENCIAS
+
+
 /*9. Crear el/los objetos de base de datos que ante alguna modificación de un ítem de
 factura de un artículo con composición realice el movimiento de sus
 correspondientes componentes*/
@@ -246,3 +375,222 @@ BEGIN
 	deallocate c1
 
 END 
+
+
+/*12. Cree el/los objetos de base de datos necesarios para que nunca un producto pueda
+ser compuesto por sí mismo. Se sabe que en la actualidad dicha regla se cumple y
+que la base de datos es accedida por n aplicaciones de diferentes tipos y tecnologías.
+No se conoce la cantidad de niveles de composición existentes.*/
+
+create trigger ej12 on composicion  instead of insert, update
+as
+begin
+	declare @prod_nuevo char(8), @comp_Nuevo char(8)
+
+	declare C_COMPOSICION cursor for 
+	select inserted.comp_producto, inserted.comp_componente from inserted 
+
+	open C_COMPOSICION
+	fetch next from C_COMPOSICION INTO  @prod_nuevo,@comp_Nuevo
+	WHILE @@FETCH_STATUS = 0 
+	BEGIN 
+		IF @prod_nuevo<>@comp_Nuevo
+		BEGIN
+			insert into composicion 
+			select * from inserted 
+			where comp_producto = @prod_nuevo and comp_componente = @comp_Nuevo
+		end
+		ELSE
+			RAISERROR('EL PRODUCTO %s NO PUEDE ESTAR COMPUESTO POR SI MISMO', 16, 1, @prod_nuevo)
+			fetch next from C_COMPOSICION INTO  @prod_nuevo,@comp_Nuevo
+	end
+	close C_COMPOSICION
+	deallocate C_COMPOSICION
+end	
+--PRUEBA
+
+-- Elijo un producto compuesto como por ejemplo el producto 00001707 esta compuesto 
+-- por dos 2 productos, el producto 00001491 y el 00014003 
+
+SELECT * 
+FROM Composicion
+WHERE comp_producto = '00001707'
+
+-- Primero pruebo con intentar insertar el producto 00001707 como componente
+-- de si mismo, no me deberia dejar ya que no puede estar compuesto por si mismo 
+
+INSERT INTO Composicion VALUES (2, '00001707', '00001707')
+
+-- Compruebo que no se haya insertado el componente
+
+SELECT * FROM Composicion WHERE comp_producto = '00001707'
+
+-- Ahora pruebo con intentar insertar un componente distinto a si mismo 
+-- para el producto 00001707 lo cual me deberia dejar hacer 
+
+INSERT INTO Composicion VALUES (2, '00001707', '00001708')
+
+-- Compruebo que se haya insertado el componente
+
+SELECT * FROM Composicion WHERE comp_producto = '00001707'
+
+-- Borro el componente de prueba
+
+DELETE FROM Composicion 
+WHERE comp_producto = '00001707' 
+AND comp_componente = '00001708'
+
+/*14. Agregar el/los objetos necesarios para que si un cliente compra un producto
+compuesto a un precio menor que la suma de los precios de sus componentes que
+imprima la fecha, que cliente, que productos y a qué precio se realizó la compra.
+No se deberá permitir que dicho precio sea menor a la mitad de la suma de los
+componentes.*/ 
+create trigger ej14 on item_factura instead of insert
+as 
+begin 
+	declare C_VENTA cursor for 
+
+	select fact_fecha,fact_cliente,inserted.item_producto, inserted.item_precio/inserted.item_cantidad, dbo.FX_PRODUCTO_COMPUESTO_PRECIO(inserted.item_producto) from inserted 
+	join factura on inserted.item_tipo+inserted.item_sucursal+inserted.item_numero = fact_tipo+fact_sucursal+fact_numero
+	declare @producto char(8), @precio_vendido decimal(18,2), @precio_Compuesto decimal(18,2), @fecha smalldatetime, @cliente char(6)
+	
+	open C_VENTA 
+	fetch next from C_VENTA into @fecha, @cliente, @producto, @precio_vendido, @precio_Compuesto 
+	while @@FETCH_STATUS = 0
+	begin 
+		if(@precio_vendido < (@precio_Compuesto/2))
+			RAISERROR('EL PRODUCTO %s NO PUEDE VENDERSE', 16, 11, @producto)
+		else 
+			begin 
+				insert into item_Factura 
+				select * from inserted 
+				where item_producto = @producto
+				if(@precio_vendido < @precio_compuesto)
+					print 'fecha'+@fecha+'cliente'+@cliente+'producto'+@producto+'precio'+@precio_vendido
+			end 
+	fetch next from C_VENTA into @producto, @precio_vendido, @precio_Compuesto 
+	end
+	close C_VENTA 
+	deallocate C_VENTA 
+end
+
+/*16. Desarrolle el/los elementos de base de datos necesarios para que ante una venta
+automaticamante se descuenten del stock los articulos vendidos. Se descontaran del
+deposito que mas producto poseea y se supone que el stock se almacena tanto de
+productos simples como compuestos (si se acaba el stock de los compuestos no se
+arman combos)
+En caso que no alcance el stock de un deposito se descontara del siguiente y asi
+hasta agotar los depositos posibles. En ultima instancia se dejara stock negativo en
+el ultimo deposito que se desconto. */
+
+create function esProducto_Compuesto(@producto char(8))
+	returns int
+as 
+begin 
+declare @retorno int
+if((select comp_producto from Composicion where comp_producto = @producto group by comp_producto) is not null)
+	set @retorno = 0 -- es compuesto
+else 
+	set @retorno = 1 -- no es compuesto
+return @retorno
+end
+go
+
+create trigger ej16 on item_factura for insert 
+as 
+begin 
+	declare @Producto char(8), @Cantidad decimal(12,2),@Comp char(8), @Cantidad_comp decimal(12,2)
+	declare C_VENTA cursor for 
+	select i.item_Producto, i.Item_Cantidad from inserted i 
+
+	open C_VENTA 
+		fetch next from C_VENTA into @Producto, @Cantidad
+		while @@FETCH_STATUS = 0
+		begin
+			if(dbo.esProducto_Compuesto(@producto))= 0
+			begin
+				declare C_COMPOSICION cursor for 
+				select comp_componente, comp_cantidad from composicion where comp_producto= @Producto
+				open C_COMPOSICION 
+				fetch next from C_COMPOSICION into @Comp, @Cantidad_comp
+				while @@FETCH_STATUS = 0
+					begin 
+						declare @depo decimal(12,2), @Canti_deposito decimal(12,2)
+						declare @cantidad_A_Descontar decimal(12,2) = @Cantidad * @Cantidad_comp
+						declare C_STOCK cursor for select stoc_deposito, stoc_cantidad
+														from stock 
+														where stoc_producto = @Comp 
+														order by stoc_cantidad desc
+						open C_STOCK 
+						fetch next from C_STOCK into @depo, @Canti_deposito 
+						while @@FETCH_STATUS = 0 and @cantidad_A_Descontar<>0 
+						begin 
+							if @Canti_deposito>= @cantidad_A_Descontar 
+							begin 
+								update STOCK set stoc_cantidad = stoc_cantidad - @cantidad_A_Descontar
+								where stoc_deposito = @depo and stoc_producto = @comp
+								set @cantidad_A_Descontar = 0
+							end 	
+							if @Canti_deposito < @cantidad_A_Descontar
+							begin 
+								set @cantidad_A_Descontar -= @Canti_deposito
+								update STOCK set stoc_cantidad = 0
+								where stoc_deposito = @depo and stoc_producto = @comp
+							end 
+							declare @depoant decimal(12,2) = @depo
+						fetch next from C_STOCK into @depo, @Canti_deposito 
+						end
+						close C_STOCK
+						deallocate C_STOCK
+						if @cantidad_A_Descontar <>0 
+							begin
+							update STOCK set stoc_cantidad = stoc_cantidad - @cantidad_A_Descontar
+							where stoc_deposito = @depoant and stoc_producto = @comp
+							end
+					fetch next from C_COMPOSICION into @Comp, @Cantidad_comp			 
+					end
+					close C_COMPOSICION
+					deallocate C_COMPOSICION
+			end 
+			else 
+			begin 
+				declare @cant_a_descontar_simple  decimal(12,2) = @Cantidad 
+					declare C_STOCK cursor for select stoc_deposito, stoc_cantidad
+														from stock 
+														where stoc_producto = @producto 
+														order by stoc_cantidad desc
+						open C_STOCK 
+						fetch next from C_STOCK into @depo, @Canti_deposito 
+						while @@FETCH_STATUS = 0 and @cant_a_descontar_simple<>0 
+						begin 
+							if  @Canti_deposito >= @cant_a_descontar_simple
+							begin 
+								update STOCK set stoc_cantidad = stoc_cantidad - @cant_a_descontar_simple
+								where stoc_deposito = @depo and stoc_producto = @Producto
+								set @cant_a_descontar_simple = 0
+							end 	
+							if @Canti_deposito < @cant_a_descontar_simple
+							begin 
+								set @cant_a_descontar_simple -= @Canti_deposito
+								update STOCK set stoc_cantidad = 0
+								where stoc_deposito = @depo and stoc_producto = @Producto
+							end 
+							declare @depoant2 decimal(12,2) = @depo
+						fetch next from C_STOCK into @depo, @Canti_deposito 
+						end
+						close C_STOCK
+						deallocate C_STOCK
+						if @cant_a_descontar_simple <>0 
+							begin
+							update STOCK set stoc_cantidad = stoc_cantidad - @cant_a_descontar_simple
+							where stoc_deposito = @depoant2 and stoc_producto = @Producto
+							end
+			end
+		close C_VENTA
+		deallocate C_VENTA
+		end
+end
+-- PRUEBA 
+
+select * from item_factura WHERE item_producto = '00001707'
+insert into item_factura values ('A','003','00093121','00001707','2.00','0.57')

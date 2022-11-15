@@ -1,4 +1,4 @@
-use GD2015C1
+ï»¿use GD2015C1
 
 -- punto 1 
 select clie_codigo,clie_razon_social
@@ -113,17 +113,19 @@ group by prod_codigo,prod_detalle
 having count(*) = (select count(*) from DEPOSITO) -- para saber si todos aparecen en todos los depositos que son 33
 
 -- EJERCICIO 9 
---Mostrar el código del jefe, código del empleado que lo tiene como jefe, nombre del
---mismo y la cantidad de depósitos que ambos tienen asignados. 
+--Mostrar el cÃ³digo del jefe, cÃ³digo del empleado que lo tiene como jefe, nombre del
+--mismo y la cantidad de depÃ³sitos que ambos tienen asignados. 
 
 SELECT empl_jefe, empl_codigo, empl_nombre, count(depo_encargado)
 FROM Empleado
 JOIN DEPOSITO ON (empl_codigo = depo_encargado or empl_jefe = depo_encargado) -- en el on va cualquier cosa que devuelva true o false 
 group by empl_jefe, empl_codigo, empl_nombre
 
+
+
 -- EJERCICIO 10 
---Mostrar los 10 productos más vendidos en la historia y también los 10 productos
---menos vendidos en la historia. Además mostrar de esos productos, quien fue el
+--Mostrar los 10 productos mÃ¡s vendidos en la historia y tambiÃ©n los 10 productos
+--menos vendidos en la historia. AdemÃ¡s mostrar de esos productos, quien fue el
 --cliente que mayor compra realizo. 
 
 SELECT prod_codigo AS 'CODIGO', prod_detalle AS 'PRODUCTO', (SELECT  TOP 1 fact_cliente
@@ -145,10 +147,10 @@ WHERE prod_codigo IN (SELECT TOP 10 item_producto
 				
 
 --11. Realizar una consulta que retorne el detalle de la familia, la cantidad diferentes de
---productos vendidos y el monto de dichas ventas sin impuestos. Los datos se deberán
---ordenar de mayor a menor, por la familia que más productos diferentes vendidos
---tenga, solo se deberán mostrar las familias que tengan una venta superior a 20000
---pesos para el año 2012. 
+--productos vendidos y el monto de dichas ventas sin impuestos. Los datos se deberÃ¡n
+--ordenar de mayor a menor, por la familia que mÃ¡s productos diferentes vendidos
+--tenga, solo se deberÃ¡n mostrar las familias que tengan una venta superior a 20000
+--pesos para el aÃ±o 2012. 
 
 SELECT fami_detalle, count(DISTINCT prod_codigo) AS 'Cantidad Diferente', SUM(item_precio * item_cantidad) AS 'monto sin impuesto'
 FROM Familia
@@ -162,10 +164,10 @@ WHERE YEAR(fact_fecha) = 2012 AND prod_familia = fami_id) > 20000
 ORDER BY count(DISTINCT prod_codigo) DESC -- ACA SE PUEDE PONER 2 DESC PARA ORDENARLO SEGUN LA COLUMNA 2
 
 --12. Mostrar nombre de producto, cantidad de clientes distintos que lo compraron
---importe promedio pagado por el producto, cantidad de depósitos en lo cuales hay
---stock del producto y stock actual del producto en todos los depósitos. Se deberán
---mostrar aquellos productos que hayan tenido operaciones en el año 2012 y los datos
---deberán ordenarse de mayor a menor por monto vendido del producto
+--importe promedio pagado por el producto, cantidad de depÃ³sitos en lo cuales hay
+--stock del producto y stock actual del producto en todos los depÃ³sitos. Se deberÃ¡n
+--mostrar aquellos productos que hayan tenido operaciones en el aÃ±o 2012 y los datos
+--deberÃ¡n ordenarse de mayor a menor por monto vendido del producto
 SELECT prod_detalle AS 'PRODUCTO', COUNT(DISTINCT fact_cliente) AS 'CLIENTES', 
 						AVG(item_precio) AS 'PRECIO PROMEDIO',ISNULL((SELECT COUNT( DISTINCT stoc_producto)		
 																	  FROM STOCK 
@@ -182,10 +184,10 @@ WHERE prod_codigo IN (SELECT item_producto FROM item_Factura JOIN Factura ON ite
 GROUP BY prod_detalle, prod_codigo
 ORDER BY SUM( item_cantidad* item_precio)DESC
 
---13 Realizar una consulta que retorne para cada producto que posea composición
+--13 Realizar una consulta que retorne para cada producto que posea composiciÃ³n
 --nombre del producto, precio del producto, precio de la sumatoria de los precios por
---la cantidad de los productos que lo componen. Solo se deberán mostrar los
---productos que estén compuestos por más de 2 productos y deben ser ordenados de
+--la cantidad de los productos que lo componen. Solo se deberÃ¡n mostrar los
+--productos que estÃ©n compuestos por mÃ¡s de 2 productos y deben ser ordenados de
 --mayor a menor por cantidad de productos que lo componen. 
 
 SELECT prod_detalle AS 'PRODUCTO' ,prod_precio AS 'PRECIO',SUM(comp_cantidad)* SUM(prod_precio) AS 'PRECIO DE COMPONENTES',COUNT(DISTINCT comp_cantidad)
@@ -195,16 +197,16 @@ GROUP BY prod_detalle,prod_precio
 HAVING COUNT(DISTINCT comp_cantidad) >2
 ORDER BY COUNT(DISTINCT comp_cantidad) DESC	
 
---14. Escriba una consulta que retorne una estadística de ventas por cliente. Los campos
+--14. Escriba una consulta que retorne una estadÃ­stica de ventas por cliente. Los campos
 --que debe retornar son:
---Código del cliente
---Cantidad de veces que compro en el último año
---Promedio por compra en el último año
---Cantidad de productos diferentes que compro en el último año
---Monto de la mayor compra que realizo en el último año
---Se deberán retornar todos los clientes ordenados por la cantidad de veces que
---compro en el último año.
---No se deberán visualizar NULLs en ninguna columna 
+--CÃ³digo del cliente
+--Cantidad de veces que compro en el Ãºltimo aÃ±o
+--Promedio por compra en el Ãºltimo aÃ±o
+--Cantidad de productos diferentes que compro en el Ãºltimo aÃ±o
+--Monto de la mayor compra que realizo en el Ãºltimo aÃ±o
+--Se deberÃ¡n retornar todos los clientes ordenados por la cantidad de veces que
+--compro en el Ãºltimo aÃ±o.
+--No se deberÃ¡n visualizar NULLs en ninguna columna 
 
 SELECT clie_codigo AS 'CODIGO CLIENTE', ISNULL(COUNT(DISTINCT fact_tipo+fact_sucursal+fact_numero),0) AS 'cantidad de veces que se compro'
 	   ,ISNULL(AVG(fact_total),0) AS 'PROMEDIO DE COMPRA', ISNULL((SELECT ISNULL(COUNT(DISTINCT item_producto), 0) 
@@ -221,12 +223,12 @@ GROUP BY clie_codigo
 ORDER BY 2 DESC
 
 /*15. Escriba una consulta que retorne los pares de productos que hayan sido vendidos
-juntos (en la misma factura) más de 500 veces. El resultado debe mostrar el código
-y descripción de cada uno de los productos y la cantidad de veces que fueron
+juntos (en la misma factura) mÃ¡s de 500 veces. El resultado debe mostrar el cÃ³digo
+y descripciÃ³n de cada uno de los productos y la cantidad de veces que fueron
 vendidos juntos. El resultado debe estar ordenado por la cantidad de veces que se
-vendieron juntos dichos productos. Los distintos pares no deben retornarse más de
+vendieron juntos dichos productos. Los distintos pares no deben retornarse mÃ¡s de
 una vez.
-Ejemplo de lo que retornaría la consulta:
+Ejemplo de lo que retornarÃ­a la consulta:
 PROD1 DETALLE1 PROD2 DETALLE2 VECES
 1731 MARLBORO KS 1 7 1 8 P H ILIPS MORRIS KS 5 0 7
 1718 PHILIPS MORRIS KS 1 7 0 5 P H I L I P S MORRIS BOX 10 5 6 2 */
@@ -246,19 +248,19 @@ SELECT  I1.item_producto AS 'PROD1', (SELECT prod_detalle
  ORDER BY 5 
 
 
- /* 16. Con el fin de lanzar una nueva campaña comercial para los clientes que menos
+ /* 16. Con el fin de lanzar una nueva campaÃ±a comercial para los clientes que menos
 compran en la empresa, se pide una consulta SQL que retorne aquellos clientes
-cuyas ventas son inferiores a 1/3 del promedio de ventas del/los producto/s que más
+cuyas ventas son inferiores a 1/3 del promedio de ventas del/los producto/s que mÃ¡s
 se vendieron en el 2012.
-Además mostrar
+AdemÃ¡s mostrar
 1. Nombre del Cliente
 2. Cantidad de unidades totales vendidas en el 2012 para ese cliente.
-3. Código de producto que mayor venta tuvo en el 2012 (en caso de existir más de 1,
-mostrar solamente el de menor código) para ese cliente.
+3. CÃ³digo de producto que mayor venta tuvo en el 2012 (en caso de existir mÃ¡s de 1,
+mostrar solamente el de menor cÃ³digo) para ese cliente.
 Aclaraciones:
-La composición es de 2 niveles, es decir, un producto compuesto solo se compone
+La composiciÃ³n es de 2 niveles, es decir, un producto compuesto solo se compone
 de productos no compuestos.
-Los clientes deben ser ordenados por código de provincia ascendente. */ 
+Los clientes deben ser ordenados por cÃ³digo de provincia ascendente. */ 
 
 SELECT clie_razon_social AS 'CLIENTE', SUM(item_cantidad) AS 'unidades vendidad 2012',
 (SELECT  TOP 1 item_producto 
@@ -276,19 +278,19 @@ JOIN Factura ON item_tipo+item_sucursal+item_numero = fact_tipo+fact_sucursal+fa
 JOIN CLIENTE ON clie_codigo = fact_cliente
 WHERE clie_codigo = fact_cliente and YEAR(fact_fecha) = 2012  GROUP BY item_producto ORDER BY SUM(item_cantidad) DESC)
 
-/*17. Escriba una consulta que retorne una estadística de ventas por año y mes para cada
+/*17. Escriba una consulta que retorne una estadÃ­stica de ventas por aÃ±o y mes para cada
 producto.
 La consulta debe retornar:
-PERIODO: Año y mes de la estadística con el formato YYYYMM
-PROD: Código de producto
+PERIODO: AÃ±o y mes de la estadÃ­stica con el formato YYYYMM
+PROD: CÃ³digo de producto
 DETALLE: Detalle del producto
 CANTIDAD_VENDIDA= Cantidad vendida del producto en el periodo
-VENTAS_AÑO_ANT= Cantidad vendida del producto en el mismo mes del
-periodo pero del año anterior
-CANT_FACTURAS= Cantidad de facturas en las que se vendió el producto en el
+VENTAS_AÃ‘O_ANT= Cantidad vendida del producto en el mismo mes del
+periodo pero del aÃ±o anterior
+CANT_FACTURAS= Cantidad de facturas en las que se vendiÃ³ el producto en el
 periodo
 La consulta no puede mostrar NULL en ninguna de sus columnas y debe estar
-ordenada por periodo y código de producto. 
+ordenada por periodo y cÃ³digo de producto. 
 */ 
 SELECT CONCAT(YEAR(F1.fact_fecha),RIGHT('0'+RTRIM(MONTH(F1.fact_fecha)),2)) AS 'PERIODO',
 	   prod_codigo AS 'CODIGO',
@@ -299,7 +301,7 @@ SELECT CONCAT(YEAR(F1.fact_fecha),RIGHT('0'+RTRIM(MONTH(F1.fact_fecha)),2)) AS '
 			JOIN Factura F2 ON item_tipo+item_sucursal+item_numero = F2.fact_tipo+F2.fact_sucursal+F2.fact_numero 
 			WHERE item_producto = prod_codigo 
 					AND YEAR(F2.fact_fecha) = YEAR(F1.fact_fecha) -1
-					AND MONTH(F2.fact_fecha) = MONTH(F1.fact_fecha)),0) AS 'CANT. VENIDAD AÑO ANTEORIOR',
+					AND MONTH(F2.fact_fecha) = MONTH(F1.fact_fecha)),0) AS 'CANT. VENIDAD AÃ‘O ANTEORIOR',
 		ISNULL(COUNT(*),0) AS 'CANTIDAD DE FACTURAS'	
 FROM Producto 
 JOIN item_Factura ON prod_codigo = item_producto
@@ -329,3 +331,16 @@ ORDER BY 1, 2
 select * from item_factura order by item_producto
 
 select * from Producto order by prod_codigo
+ 
+/*30. Se desea obtener una estadistica de ventas del aÃ±o 2012, para los empleados que sean
+jefes, o sea, que tengan empleados a su cargo, para ello se requiere que realice la
+consulta que retorne las siguientes columnas:
+ï‚· Nombre del Jefe
+ï‚· Cantidad de empleados a cargo
+ï‚· Monto total vendido de los empleados a cargo
+ï‚· Cantidad de facturas realizadas por los empleados a cargo
+ï‚· Nombre del empleado con mejor ventas de ese jefe
+Debido a la perfomance requerida, solo se permite el uso de una subconsulta si fuese
+necesario.
+Los datos deberan ser ordenados por de mayor a menor por el Total vendido y solo se
+deben mostrarse los jefes cuyos subordinados hayan realizado mÃ¡s de 10 facturas.*/select ej.empl_nombre as 'jefe',count(distinct ee.empl_codigo) as 'empleados a cargo' ,sum(fact_total) as 'total vendido' ,count(*) 'total de facturas' ,(select  top 1 e1.empl_nombre from empleado e1 join Factura on e1.empl_codigo = fact_vendedorwhere   ee.empl_jefe = e1.empl_jefe and year(fact_fecha) = 2012group by  e1.empl_nombreOrder by sum(fact_total) desc) as 'empleado con mejor ventas' from empleado ee join empleado ej on ee.empl_jefe = ej.empl_codigo		join factura on ee.empl_codigo = fact_vendedorwhere year(fact_fecha) = 2012  group by ej.empl_nombre, ee.empl_jefe   having count(*) >10  order by 3 desc/* ejercicio practica sql La empresa necesita recuperar ventas perdidas. Con el fin de lanzar una nueva campaÃ±a comercial, se pide una consulta SQL que retorne aquellos clientes cuyas ventas(considerar fact_total) del aÃ±o 2012 fueron inferiores al 25% del promedio de ventas de los productos vendidos entre los aÃ±os 2011 y 2010. En base a lo solicitado, se requiere un listado con la siguiente informacion: 1.Razon social del cliente  2. Mostrar la leyenda "cliente recurente" si dicho cliente realizo mas de una compra en el 2012. En caso de que haya realizado solo 1 compra, entonces mostrar la leyenda "Unica vez" 3. Cantidad de productos totales vendidad en el 2012 para ese cliente. 4. Codigo de producto que mayor venta tuvo en el 2012(en caso de exisitir mas de 1, mostrar solamente el menor codigo) para ese cliente*/select clie_razon_social, case when count(distinct fact_numero + fact_sucursal + fact_tipo) >1  then 'CLIENTE RECURENTE'															    else 'Unica Vez' end, 															    sum(item_cantidad), 																(select top 1 item_producto from factura join Item_Factura on 																 fact_numero + fact_sucursal + fact_tipo = item_numero + item_sucursal + item_tipo 																 where year(fact_fecha) = 2012 and clie_codigo = fact_cliente 																 group by item_producto 																 order by sum(item_cantidad)desc, item_producto)  from factura  join Cliente on fact_cliente = clie_codigojoin item_factura on fact_numero + fact_sucursal + fact_tipo = item_numero + item_sucursal + item_tipo where year(fact_fecha) = 2012group by clie_razon_social, clie_codigohaving sum(item_cantidad* item_precio) < (0.25* (select avg(fact_total) from factura where year(fact_fecha) between 2010 and 2011)) order by 1-- otra forma contemplando el fact_total select clie_razon_social, case when count(*) >1  then 'CLIENTE RECURENTE'							else 'Unica Vez' end, 							(select sum(item_cantidad) from item_factura join Factura on  fact_numero + fact_sucursal + fact_tipo = item_numero + item_sucursal + item_tipo 							where clie_codigo = fact_cliente) , 							(select top 1 item_producto from factura join Item_Factura on 							fact_numero + fact_sucursal + fact_tipo = item_numero + item_sucursal + item_tipo 							where year(fact_fecha) = 2012 and clie_codigo = fact_cliente 							group by item_producto 							order by sum(item_cantidad)desc, item_producto)  from factura  join Cliente on fact_cliente = clie_codigowhere year(fact_fecha) = 2012group by clie_razon_social, clie_codigohaving sum(fact_total) < (0.25* (select avg(fact_total) from factura where year(fact_fecha) between 2010 and 2011)) order by 1
