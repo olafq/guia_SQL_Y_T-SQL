@@ -343,4 +343,126 @@ consulta que retorne las siguientes columnas:
 Debido a la perfomance requerida, solo se permite el uso de una subconsulta si fuese
 necesario.
 Los datos deberan ser ordenados por de mayor a menor por el Total vendido y solo se
-deben mostrarse los jefes cuyos subordinados hayan realizado más de 10 facturas.*/select ej.empl_nombre as 'jefe',count(distinct ee.empl_codigo) as 'empleados a cargo' ,sum(fact_total) as 'total vendido' ,count(*) 'total de facturas' ,(select  top 1 e1.empl_nombre from empleado e1 join Factura on e1.empl_codigo = fact_vendedorwhere   ee.empl_jefe = e1.empl_jefe and year(fact_fecha) = 2012group by  e1.empl_nombreOrder by sum(fact_total) desc) as 'empleado con mejor ventas' from empleado ee join empleado ej on ee.empl_jefe = ej.empl_codigo		join factura on ee.empl_codigo = fact_vendedorwhere year(fact_fecha) = 2012  group by ej.empl_nombre, ee.empl_jefe   having count(*) >10  order by 3 desc/* ejercicio practica sql La empresa necesita recuperar ventas perdidas. Con el fin de lanzar una nueva campaña comercial, se pide una consulta SQL que retorne aquellos clientes cuyas ventas(considerar fact_total) del año 2012 fueron inferiores al 25% del promedio de ventas de los productos vendidos entre los años 2011 y 2010. En base a lo solicitado, se requiere un listado con la siguiente informacion: 1.Razon social del cliente  2. Mostrar la leyenda "cliente recurente" si dicho cliente realizo mas de una compra en el 2012. En caso de que haya realizado solo 1 compra, entonces mostrar la leyenda "Unica vez" 3. Cantidad de productos totales vendidad en el 2012 para ese cliente. 4. Codigo de producto que mayor venta tuvo en el 2012(en caso de exisitir mas de 1, mostrar solamente el menor codigo) para ese cliente*/select clie_razon_social, case when count(distinct fact_numero + fact_sucursal + fact_tipo) >1  then 'CLIENTE RECURENTE'															    else 'Unica Vez' end, 															    sum(item_cantidad), 																(select top 1 item_producto from factura join Item_Factura on 																 fact_numero + fact_sucursal + fact_tipo = item_numero + item_sucursal + item_tipo 																 where year(fact_fecha) = 2012 and clie_codigo = fact_cliente 																 group by item_producto 																 order by sum(item_cantidad)desc, item_producto)  from factura  join Cliente on fact_cliente = clie_codigojoin item_factura on fact_numero + fact_sucursal + fact_tipo = item_numero + item_sucursal + item_tipo where year(fact_fecha) = 2012group by clie_razon_social, clie_codigohaving sum(item_cantidad* item_precio) < (0.25* (select avg(fact_total) from factura where year(fact_fecha) between 2010 and 2011)) order by 1-- otra forma contemplando el fact_total select clie_razon_social, case when count(*) >1  then 'CLIENTE RECURENTE'							else 'Unica Vez' end, 							(select sum(item_cantidad) from item_factura join Factura on  fact_numero + fact_sucursal + fact_tipo = item_numero + item_sucursal + item_tipo 							where clie_codigo = fact_cliente) , 							(select top 1 item_producto from factura join Item_Factura on 							fact_numero + fact_sucursal + fact_tipo = item_numero + item_sucursal + item_tipo 							where year(fact_fecha) = 2012 and clie_codigo = fact_cliente 							group by item_producto 							order by sum(item_cantidad)desc, item_producto)  from factura  join Cliente on fact_cliente = clie_codigowhere year(fact_fecha) = 2012group by clie_razon_social, clie_codigohaving sum(fact_total) < (0.25* (select avg(fact_total) from factura where year(fact_fecha) between 2010 and 2011)) order by 1
+deben mostrarse los jefes cuyos subordinados hayan realizado más de 10 facturas.
+*/
+
+select ej.empl_nombre as 'jefe',count(distinct ee.empl_codigo) as 'empleados a cargo' ,sum(fact_total) as 'total vendido' ,count(*) 'total de facturas' ,
+(select  top 1 e1.empl_nombre from empleado e1 join Factura on e1.empl_codigo = fact_vendedor
+where   ee.empl_jefe = e1.empl_jefe and year(fact_fecha) = 2012
+group by  e1.empl_nombre
+Order by sum(fact_total) desc) as 'empleado con mejor ventas'
+ from empleado ee join empleado ej on ee.empl_jefe = ej.empl_codigo
+		join factura on ee.empl_codigo = fact_vendedor
+where year(fact_fecha) = 2012
+  group by ej.empl_nombre, ee.empl_jefe
+   having count(*) >10
+  order by 3 desc
+
+
+/* ejercicio practica sql 
+La empresa necesita recuperar ventas perdidas. Con el fin de lanzar una nueva campaña comercial, 
+se pide una consulta SQL que retorne aquellos clientes cuyas ventas(considerar fact_total)
+ del año 2012 fueron inferiores al 25% del promedio de ventas de los productos vendidos entre los años 2011 y 2010.
+ En base a lo solicitado, se requiere un listado con la siguiente informacion:
+ 1.Razon social del cliente 
+ 2. Mostrar la leyenda "cliente recurente" si dicho cliente realizo mas de una compra en el 2012.
+ En caso de que haya realizado solo 1 compra, entonces mostrar la leyenda "Unica vez"
+ 3. Cantidad de productos totales vendidad en el 2012 para ese cliente.
+ 4. Codigo de producto que mayor venta tuvo en el 2012(en caso de exisitir mas de 1, mostrar solamente el menor codigo) para ese cliente
+*/
+
+select clie_razon_social, case when count(distinct fact_numero + fact_sucursal + fact_tipo) >1  then 'CLIENTE RECURENTE'
+															    else 'Unica Vez' end, 
+															    sum(item_cantidad), 
+																(select top 1 item_producto from factura join Item_Factura on 
+																 fact_numero + fact_sucursal + fact_tipo = item_numero + item_sucursal + item_tipo 
+																 where year(fact_fecha) = 2012 and clie_codigo = fact_cliente 
+																 group by item_producto 
+																 order by sum(item_cantidad)desc, item_producto)  
+from factura  join Cliente on fact_cliente = clie_codigo
+join item_factura on fact_numero + fact_sucursal + fact_tipo = item_numero + item_sucursal + item_tipo 
+where year(fact_fecha) = 2012
+group by clie_razon_social, clie_codigo
+having sum(item_cantidad* item_precio) < (0.25* (select avg(fact_total) from factura where year(fact_fecha) between 2010 and 2011)) 
+order by 1
+
+-- otra forma contemplando el fact_total 
+select clie_razon_social, case when count(*) >1  then 'CLIENTE RECURENTE'
+							else 'Unica Vez' end, 
+							(select sum(item_cantidad) from item_factura join Factura on  fact_numero + fact_sucursal + fact_tipo = item_numero + item_sucursal + item_tipo 
+							where clie_codigo = fact_cliente) , 
+							(select top 1 item_producto from factura join Item_Factura on 
+							fact_numero + fact_sucursal + fact_tipo = item_numero + item_sucursal + item_tipo 
+							where year(fact_fecha) = 2012 and clie_codigo = fact_cliente 
+							group by item_producto 
+							order by sum(item_cantidad)desc, item_producto)  
+from factura  join Cliente on fact_cliente = clie_codigo
+where year(fact_fecha) = 2012
+group by clie_razon_social, clie_codigo
+having sum(fact_total) < (0.25* (select avg(fact_total) from factura where year(fact_fecha) between 2010 and 2011)) 
+order by 1
+
+/*1. Realizar una consulta SQL que permita saber si un cliente compro un producto en todos los meses del 2012.
+Además, mostrar para el 2012:
+1. El cliente
+2. La razón social del cliente
+3. El producto comprado
+4. El nombre del producto
+5. Cantidad de productos distintos comprados por el cliente.
+6. Cantidad de productos con composición comprados por el cliente.
+El resultado deberá ser ordenado poniendo primero aquellos clientes que 
+compraron más de 10 productos distintos en el 2012. */
+SELECT 
+C.clie_codigo,
+C.clie_razon_social,
+P.prod_codigo,
+P.prod_detalle,
+(SELECT 
+COUNT(DISTINCT I2.item_producto)
+FROM ITEM_FACTURA I2 JOIN FACTURA F2 ON I2.item_numero = F2.fact_numero AND 
+                I2.item_sucursal = F2.fact_sucursal AND I2.item_tipo = F2.fact_tipo 
+WHERE 
+F2.fact_cliente = C.clie_codigo AND YEAR(F2.fact_fecha) = 2012
+),
+(SELECT 
+SUM(item_cantidad) 
+FROM ITEM_FACTURA I2 JOIN FACTURA F2 ON I2.item_numero = F2.fact_numero AND I2.item_sucursal = F2.fact_sucursal AND 
+				I2.item_tipo = F2.fact_tipo 
+WHERE 
+F2.fact_cliente = C.clie_codigo AND 
+YEAR(F2.fact_fecha) = 2012 AND 
+EXISTS (SELECT 1 FROM COMPOSICION WHERE COMP_PRODUCTO = P.prod_codigo)
+)
+
+FROM CLIENTE C JOIN FACTURA F ON C.clie_codigo = F.fact_cliente 
+
+          JOIN ITEM_FACTURA I ON I.item_numero = F.fact_numero AND 
+
+            I.item_sucursal = F.fact_sucursal AND 
+
+            I.item_tipo = F.fact_tipo 
+
+          JOIN PRODUCTO P ON P.prod_codigo = I.item_producto 
+
+WHERE 
+
+YEAR(F.fact_fecha) = 2012
+
+GROUP BY 
+
+C.clie_codigo ,
+
+C.clie_razon_social ,
+
+P.prod_codigo ,
+
+P.prod_detalle 
+
+HAVING 
+
+COUNT(DISTINCT MONTH(F.fact_fecha)) = 12 
+
+ORDER BY 
+
+5 DESC 
+
